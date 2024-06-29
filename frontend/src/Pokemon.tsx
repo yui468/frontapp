@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { Chart, registerables } from 'chart.js';
+import './Pokemon.css';
 
 Chart.register(...registerables);
 
@@ -21,11 +22,14 @@ interface PokemonData {
   abilities: Array<{
     ability: {
       name: string;
+      url: string;
     };
+    is_hidden: boolean;
   }>;
   types: Array<{
     type: {
       name: string;
+      url: string;
     };
   }>;
   stats: Array<{
@@ -35,7 +39,18 @@ interface PokemonData {
     };
   }>;
   japaneseName?: string;
+  japaneseAbilities?: string[];
+  japaneseTypes?: string[];
 }
+
+const statLabels: { [key: string]: string } = {
+  hp: 'HP',
+  attack: '攻撃',
+  defense: '防御',
+  'special-attack': '特攻',
+  'special-defense': '特防',
+  speed: '速度'
+};
 
 const Pokemon: React.FC = () => {
   const [pokemon, setPokemon] = useState<PokemonData | null>(null);
@@ -43,29 +58,55 @@ const Pokemon: React.FC = () => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
 
-  const fetchRandomPokemon = async () => {
+  const fetchAbilityOrTypeInJapanese = useCallback(async (url: string): Promise<string> => {
+    const response = await axios.get(url);
+    const japaneseName = response.data.names.find((name: { language: { name: string; }; }) => name.language.name === 'ja-Hrkt')?.name;
+    return japaneseName || 'N/A';
+  }, []);
+
+  const fetchPokemonDetails = useCallback(async (randomId: number) => {
     setLoadingPokemon(true);
     try {
-      const randomId = Math.floor(Math.random() * 898) + 1; // Pokémon ID ranges from 1 to 898
       const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
       const speciesResponse = await axios.get(response.data.species.url);
       const japaneseName = speciesResponse.data.names.find((name: { language: { name: string; }; }) => name.language.name === 'ja-Hrkt')?.name;
-      setPokemon({ ...response.data, japaneseName });
+
+      const abilities = await Promise.all(response.data.abilities.map(async (ability: { ability: { url: string; }; }) => {
+        const japaneseAbilityName = await fetchAbilityOrTypeInJapanese(ability.ability.url);
+        return japaneseAbilityName;
+      }));
+
+      const types = await Promise.all(response.data.types.map(async (type: { type: { url: string; }; }) => {
+        const japaneseTypeName = await fetchAbilityOrTypeInJapanese(type.type.url);
+        return japaneseTypeName;
+      }));
+
+      setPokemon({
+        ...response.data,
+        japaneseName,
+        japaneseAbilities: abilities,
+        japaneseTypes: types,
+      });
     } catch (error) {
       console.error('Error fetching the Pokémon data', error);
     } finally {
       setLoadingPokemon(false);
     }
-  };
+  }, [fetchAbilityOrTypeInJapanese]);
+
+  const fetchRandomPokemon = useCallback(async () => {
+    const randomId = Math.floor(Math.random() * 898) + 1; // Pokémon ID ranges from 1 to 898
+    await fetchPokemonDetails(randomId);
+  }, [fetchPokemonDetails]);
 
   useEffect(() => {
     fetchRandomPokemon();
-  }, []);
+  }, [fetchRandomPokemon]);
 
   useEffect(() => {
     if (pokemon && chartRef.current) {
       const data = {
-        labels: pokemon.stats.map(stat => stat.stat.name),
+        labels: pokemon.stats.map(stat => statLabels[stat.stat.name]),
         datasets: [{
           label: pokemon.name,
           data: pokemon.stats.map(stat => stat.base_stat),
@@ -97,33 +138,45 @@ const Pokemon: React.FC = () => {
   }, [pokemon]);
 
   return (
-    <div className="pokemon-container">
-      <div className="pokemon-content">
+    <div className="pokedex-container">
+      <div className="pokedex-screen">
         {pokemon && (
           <>
-            <h2>{pokemon.japaneseName || pokemon.name}</h2>
-            <img className="pokemon-image" src={pokemon.sprites.front_default} alt={pokemon.name} />
-            <p>高さ: {pokemon.height} dm</p>
-            <p>重さ: {pokemon.weight} hg</p>
-            <p>特性:</p>
-            <ul>
-              {pokemon.abilities.map((ability, index) => (
-                <li key={index}>{ability.ability.name}</li>
-              ))}
-            </ul>
-            <p>タイプ:</p>
-            <ul>
-              {pokemon.types.map((type, index) => (
-                <li key={index}>{type.type.name}</li>
-              ))}
-            </ul>
-            <div style={{ position: 'relative', width: '100%', height: '400px' }}>
+            <div className="pokedex-content">
+              <div className="pokedex-image-container">
+                <img className="pokemon-image" src={pokemon.sprites.front_default} alt={pokemon.name} />
+              </div>
+              <div className="pokedex-info">
+                <div className="pokedex-header">
+                  <h2>{pokemon.japaneseName || pokemon.name}</h2>
+                </div>
+                <p>高さ: {pokemon.height} dm</p>
+                <p>重さ: {pokemon.weight} hg</p>
+                <div className="horizontal-list">
+                  <p>特性:</p>
+                  <ul>
+                    {pokemon.japaneseAbilities?.map((ability, index) => (
+                      <li key={index}>{ability}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="horizontal-list">
+                  <p>タイプ:</p>
+                  <ul>
+                    {pokemon.japaneseTypes?.map((type, index) => (
+                      <li key={index}>{type}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="pokedex-chart">
               <canvas ref={chartRef}></canvas>
             </div>
           </>
         )}
       </div>
-      <button onClick={fetchRandomPokemon} disabled={loadingPokemon}>
+      <button className="pokedex-button" onClick={fetchRandomPokemon} disabled={loadingPokemon}>
         {loadingPokemon ? '読込中...' : 'ランダムなポケモンを取得'}
       </button>
     </div>
