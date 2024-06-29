@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3001:3000"  # ホストの3001ポートをコンテナの3000ポートにマッピング
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+
