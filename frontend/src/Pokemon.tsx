@@ -57,6 +57,7 @@ const Pokemon: React.FC = () => {
   const [loadingPokemon, setLoadingPokemon] = useState(false);
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const fetchAbilityOrTypeInJapanese = useCallback(async (url: string): Promise<string> => {
     const response = await axios.get(url);
@@ -124,11 +125,6 @@ const Pokemon: React.FC = () => {
         type: 'radar',
         data: data,
         options: {
-          plugins: {
-            legend: {
-              display: false
-            }
-          },
           scales: {
             r: {
               beginAtZero: true,
@@ -142,6 +138,49 @@ const Pokemon: React.FC = () => {
     }
   }, [pokemon]);
 
+  useEffect(() => {
+    if (pokemon && canvasRef.current) {
+      const img = new Image();
+      img.src = pokemon.sprites.front_default;
+
+      img.onload = () => {
+        const ctx = canvasRef.current!.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+          ctx.drawImage(img, 0, 0, canvasRef.current!.width, canvasRef.current!.height);
+
+          const imageData = ctx.getImageData(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+          const data = imageData.data;
+
+          // シャープネスフィルターを適用
+          const kernel = [
+            0, -1, 0,
+            -1, 5, -1,
+            0, -1, 0
+          ];
+          const weight = kernel.reduce((a, b) => a + b);
+
+          for (let i = 0; i < data.length; i += 4) {
+            let sumR = 0, sumG = 0, sumB = 0;
+
+            for (let j = 0; j < kernel.length; j++) {
+              const k = kernel[j];
+              sumR += data[i + 0] * k;
+              sumG += data[i + 1] * k;
+              sumB += data[i + 2] * k;
+            }
+
+            data[i + 0] = Math.min(255, Math.max(0, sumR / weight));
+            data[i + 1] = Math.min(255, Math.max(0, sumG / weight));
+            data[i + 2] = Math.min(255, Math.max(0, sumB / weight));
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+        }
+      };
+    }
+  }, [pokemon]);
+
   return (
     <div className="pokedex-container">
       <div className="pokedex-screen">
@@ -152,7 +191,7 @@ const Pokemon: React.FC = () => {
             </div>
             <div className="pokedex-content">
               <div className="pokedex-image-container">
-                <img className="pokemon-image" src={pokemon.sprites.front_default} alt={pokemon.name} />
+                <canvas ref={canvasRef} width="300" height="300" className="pokemon-image"></canvas>
               </div>
               <div className="pokedex-info">
                 <p>高さ: {pokemon.height} dm</p>
