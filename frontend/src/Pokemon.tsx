@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Chart, registerables } from 'chart.js';
 
+Chart.register(...registerables);
+
 interface PokemonData {
   id: number;
   name: string;
@@ -32,24 +34,27 @@ interface PokemonData {
       name: string;
     };
   }>;
+  japaneseName?: string;
 }
 
 const Pokemon: React.FC = () => {
   const [pokemon, setPokemon] = useState<PokemonData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingPokemon, setLoadingPokemon] = useState(false);
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
 
   const fetchRandomPokemon = async () => {
-    setLoading(true);
+    setLoadingPokemon(true);
     try {
-      const randomId = Math.floor(Math.random() * 898) + 1; // ポケモンのIDは1から898まで
+      const randomId = Math.floor(Math.random() * 898) + 1; // Pokémon ID ranges from 1 to 898
       const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
-      setPokemon(response.data);
+      const speciesResponse = await axios.get(response.data.species.url);
+      const japaneseName = speciesResponse.data.names.find((name: { language: { name: string; }; }) => name.language.name === 'ja-Hrkt')?.name;
+      setPokemon({ ...response.data, japaneseName });
     } catch (error) {
-      console.error('Error fetching the Pokemon data', error);
+      console.error('Error fetching the Pokémon data', error);
     } finally {
-      setLoading(false);
+      setLoadingPokemon(false);
     }
   };
 
@@ -83,42 +88,44 @@ const Pokemon: React.FC = () => {
               beginAtZero: true,
               max: 150,
             }
-          }
+          },
+          responsive: true,
+          maintainAspectRatio: false
         }
       });
     }
   }, [pokemon]);
-
-  const japaneseName = pokemon?.names.find(name => name.language.name === 'ja-Hrkt')?.name;
 
   return (
     <div className="pokemon-container">
       <div className="pokemon-content">
         {pokemon && (
           <>
-            <h2>{pokemon.name}</h2>
-            {japaneseName && <h3>{japaneseName}</h3>}
+            <h2>{pokemon.japaneseName || pokemon.name}</h2>
             <img className="pokemon-image" src={pokemon.sprites.front_default} alt={pokemon.name} />
-            <p>Height: {pokemon.height}</p>
-            <p>Weight: {pokemon.weight}</p>
-            <p>Abilities:</p>
+            <p>高さ: {pokemon.height} dm</p>
+            <p>重さ: {pokemon.weight} hg</p>
+            <p>特性:</p>
             <ul>
               {pokemon.abilities.map((ability, index) => (
                 <li key={index}>{ability.ability.name}</li>
               ))}
             </ul>
-            <p>Types:</p>
+            <p>タイプ:</p>
             <ul>
               {pokemon.types.map((type, index) => (
                 <li key={index}>{type.type.name}</li>
               ))}
             </ul>
-            <canvas ref={chartRef} width="400" height="400"></canvas>
+            <div style={{ position: 'relative', width: '100%', height: '400px' }}>
+              <canvas ref={chartRef}></canvas>
+            </div>
           </>
         )}
       </div>
-      <button onClick={fetchRandomPokemon} disabled={loading}>Get Random Pokemon</button>
-      {loading && <p className="loading">Loading...</p>}
+      <button onClick={fetchRandomPokemon} disabled={loadingPokemon}>
+        {loadingPokemon ? '読込中...' : 'ランダムなポケモンを取得'}
+      </button>
     </div>
   );
 };
