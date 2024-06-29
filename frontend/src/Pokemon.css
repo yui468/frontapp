@@ -30,18 +30,18 @@
 .pokedex-content {
   width: 100%;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around; /* スペースを均等に分ける */
   align-items: center;
   margin-bottom: 20px;
 }
 
-.pokedex-image-container {
-  width: 40%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
 
+.pokemon-image {
+  width: 200px; /* ここで幅を設定 */
+  height: auto; /* 自動的に高さを調整 */
+  display: block;
+  margin: 0 auto; /* 画像を中央に配置 */
+}
 .pokedex-info {
   width: 55%;
   text-align: left;

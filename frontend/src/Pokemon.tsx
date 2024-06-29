@@ -124,6 +124,11 @@ const Pokemon: React.FC = () => {
         type: 'radar',
         data: data,
         options: {
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
           scales: {
             r: {
               beginAtZero: true,
@@ -142,14 +147,14 @@ const Pokemon: React.FC = () => {
       <div className="pokedex-screen">
         {pokemon && (
           <>
+            <div className="pokedex-header">
+              <h2>{pokemon.japaneseName || pokemon.name}</h2>
+            </div>
             <div className="pokedex-content">
               <div className="pokedex-image-container">
                 <img className="pokemon-image" src={pokemon.sprites.front_default} alt={pokemon.name} />
               </div>
               <div className="pokedex-info">
-                <div className="pokedex-header">
-                  <h2>{pokemon.japaneseName || pokemon.name}</h2>
-                </div>
                 <p>高さ: {pokemon.height} dm</p>
                 <p>重さ: {pokemon.weight} hg</p>
                 <div className="horizontal-list">
