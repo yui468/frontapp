@@ -15,7 +15,7 @@ body {
   color: white;
 }
 
-.pokemon-container, .nikke-container {
+.pokemon-container {
   background: white;
   color: #333;
   border-radius: 8px;
@@ -26,7 +26,7 @@ body {
   text-align: center;
 }
 
-.pokemon-content img, .nikke-content img {
+.pokemon-content img{
   max-width: 100%;
   border-radius: 8px;
 }
