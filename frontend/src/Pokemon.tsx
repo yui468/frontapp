@@ -141,6 +141,7 @@ const Pokemon: React.FC = () => {
   useEffect(() => {
     if (pokemon && canvasRef.current) {
       const img = new Image();
+      img.crossOrigin = "Anonymous";
       img.src = pokemon.sprites.front_default;
 
       img.onload = () => {
