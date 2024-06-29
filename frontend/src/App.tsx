@@ -1,11 +1,10 @@
 import React from 'react';
-import './App.css';
 import Pokemon from './Pokemon';
-
+import './App.css';
 
 const App: React.FC = () => {
   return (
-    <div className="app-container">
+    <div className="App">
       <Pokemon />
     </div>
   );
